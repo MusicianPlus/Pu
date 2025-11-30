@@ -32,17 +32,20 @@ export const ObjNodes = {
     'obj_mesh': {
         cat: 'obj', name: { tr:'Nesne (Mesh)', en:'Mesh Object' },
         desc: { tr:'Sahneye geometri yerleştirir.', en:'Renders a geometry to the scene.' },
-        ports: { in:['Geo', 'Mat', 'PosX', 'PosY', 'PosZ', 'RotX', 'RotY', 'RotZ', 'Scale'], out:['Obj'] },
+        ports: { in:['Geo', 'Mat', 'PosX', 'PosY', 'PosZ', 'RotX', 'RotY', 'RotZ', 'Scale', 'CastShadow', 'RecvShadow'], out:['Obj'] },
         params: { 
             PosX:{v:0}, PosY:{v:0}, PosZ:{v:0},
             RotX:{v:0}, RotY:{v:0}, RotZ:{v:0},
-            Scale:{v:1}
+            Scale:{v:1},
+            CastShadow:{v:0, min:0, max:1, step:1, label:'Cast Shadow'},
+            RecvShadow:{v:1, min:0, max:1, step:1, label:'Recv Shadow'}
         },
         init: (n) => {
             // Default placeholder
             const g = new THREE.BoxGeometry(1,1,1);
             const m = new THREE.MeshStandardMaterial({color:0x888888});
             const mesh = new THREE.Mesh(g, m);
+            mesh.receiveShadow = true;
             scene.add(mesh);
             objects[n.id] = mesh;
             n.val.Obj = mesh;
@@ -78,6 +81,13 @@ export const ObjNodes = {
 
             const s = getIn(n, 'Scale') || n.params.Scale.v;
             mesh.scale.set(s,s,s);
+
+            // Shadows
+            const cast = (getIn(n, 'CastShadow') || n.params.CastShadow.v) > 0.5;
+            const recv = (getIn(n, 'RecvShadow') || n.params.RecvShadow.v) > 0.5;
+
+            if(mesh.castShadow !== cast) mesh.castShadow = cast;
+            if(mesh.receiveShadow !== recv) mesh.receiveShadow = recv;
         }
     },
     'obj_cam': {
@@ -113,8 +123,8 @@ export const ObjNodes = {
     'obj_light_point': {
         cat: 'obj', name: { tr:'Nokta Işık', en:'Point Light' },
         desc: { tr:'Noktasal ışık kaynağı.', en:'Omnidirectional light source.' },
-        ports: { in:['R', 'G', 'B', 'Intensity', 'X', 'Y', 'Z'], out:[] },
-        params: { R:{v:1}, G:{v:1}, B:{v:1}, Intensity:{v:1, min:0, max:10}, X:{v:2}, Y:{v:2}, Z:{v:2} },
+        ports: { in:['R', 'G', 'B', 'Intensity', 'X', 'Y', 'Z', 'CastShadow'], out:[] },
+        params: { R:{v:1}, G:{v:1}, B:{v:1}, Intensity:{v:1, min:0, max:10}, X:{v:2}, Y:{v:2}, Z:{v:2}, CastShadow:{v:0, min:0, max:1, step:1, label:'Shadows'} },
         init: (n) => {
             const l = new THREE.PointLight(0xffffff, 1, 100);
             scene.add(l);
@@ -129,13 +139,24 @@ export const ObjNodes = {
             l.color.setRGB(getIn(n,'R'), getIn(n,'G'), getIn(n,'B'));
             l.intensity = getIn(n, 'Intensity');
             l.position.set(getIn(n,'X'), getIn(n,'Y'), getIn(n,'Z'));
+
+            const cast = (getIn(n,'CastShadow') || n.params.CastShadow.v) > 0.5;
+            if(l.castShadow !== cast) {
+                l.castShadow = cast;
+                // Basic Shadow config
+                if(cast) {
+                     l.shadow.mapSize.width = 512;
+                     l.shadow.mapSize.height = 512;
+                     l.shadow.bias = -0.001;
+                }
+            }
         }
     },
     'obj_light_dir': {
         cat: 'obj', name: { tr:'Yönlü Işık', en:'Directional Light' },
         desc: { tr:'Güneş benzeri ışık.', en:'Sun-like infinite light.' },
-        ports: { in:['R', 'G', 'B', 'Intensity', 'X', 'Y', 'Z'], out:[] },
-        params: { R:{v:1}, G:{v:1}, B:{v:1}, Intensity:{v:1, min:0, max:10}, X:{v:5}, Y:{v:5}, Z:{v:5} },
+        ports: { in:['R', 'G', 'B', 'Intensity', 'X', 'Y', 'Z', 'CastShadow'], out:[] },
+        params: { R:{v:1}, G:{v:1}, B:{v:1}, Intensity:{v:1, min:0, max:10}, X:{v:5}, Y:{v:5}, Z:{v:5}, CastShadow:{v:0, min:0, max:1, step:1, label:'Shadows'} },
         init: (n) => {
             const l = new THREE.DirectionalLight(0xffffff, 1);
             scene.add(l);
@@ -150,6 +171,19 @@ export const ObjNodes = {
             l.color.setRGB(getIn(n,'R'), getIn(n,'G'), getIn(n,'B'));
             l.intensity = getIn(n, 'Intensity');
             l.position.set(getIn(n,'X'), getIn(n,'Y'), getIn(n,'Z'));
+
+            const cast = (getIn(n,'CastShadow') || n.params.CastShadow.v) > 0.5;
+            if(l.castShadow !== cast) {
+                l.castShadow = cast;
+                if(cast) {
+                    l.shadow.mapSize.width = 1024;
+                    l.shadow.mapSize.height = 1024;
+                    const d = 10;
+                    l.shadow.camera.left = -d; l.shadow.camera.right = d;
+                    l.shadow.camera.top = d; l.shadow.camera.bottom = -d;
+                }
+            }
+
             // Update helper
             if(l.userData.helper) l.userData.helper.update();
         }
@@ -157,8 +191,8 @@ export const ObjNodes = {
     'obj_light_spot': {
         cat: 'obj', name: { tr:'Spot Işık', en:'Spot Light' },
         desc: { tr:'Koni şeklinde ışık.', en:'Cone-shaped light source.' },
-        ports: { in:['R', 'G', 'B', 'Intensity', 'X', 'Y', 'Z', 'Angle', 'Penumbra'], out:[] },
-        params: { R:{v:1}, G:{v:1}, B:{v:1}, Intensity:{v:1}, X:{v:0}, Y:{v:5}, Z:{v:0}, Angle:{v:0.5, min:0, max:1.5}, Penumbra:{v:0.5, min:0, max:1} },
+        ports: { in:['R', 'G', 'B', 'Intensity', 'X', 'Y', 'Z', 'Angle', 'Penumbra', 'CastShadow'], out:[] },
+        params: { R:{v:1}, G:{v:1}, B:{v:1}, Intensity:{v:1}, X:{v:0}, Y:{v:5}, Z:{v:0}, Angle:{v:0.5, min:0, max:1.5}, Penumbra:{v:0.5, min:0, max:1}, CastShadow:{v:0, min:0, max:1, step:1, label:'Shadows'} },
         init: (n) => {
             const l = new THREE.SpotLight(0xffffff, 1);
             scene.add(l);
@@ -174,20 +208,35 @@ export const ObjNodes = {
             l.position.set(getIn(n,'X'), getIn(n,'Y'), getIn(n,'Z'));
             l.angle = getIn(n, 'Angle') || n.params.Angle.v;
             l.penumbra = getIn(n, 'Penumbra') || n.params.Penumbra.v;
+
+            const cast = (getIn(n,'CastShadow') || n.params.CastShadow.v) > 0.5;
+            if(l.castShadow !== cast) {
+                l.castShadow = cast;
+                if(cast) {
+                    l.shadow.mapSize.width = 1024;
+                    l.shadow.mapSize.height = 1024;
+                }
+            }
+
             if(l.userData.helper) l.userData.helper.update();
         }
     },
     'obj_instancer': {
         cat: 'obj', name: { tr:'Çoğaltıcı', en:'Instancer' },
         desc: { tr:'GPU tabanlı nesne çoğaltma.', en:'High performance GPU instancing.' },
-        ports: { in:['Geo', 'Mat', 'PosArr', 'RotArr', 'ScaleArr', 'ColorArr'], out:['Obj'] },
-        params: { Count:{v:100, min:10, max:5000, step:10} },
+        ports: { in:['Geo', 'Mat', 'PosArr', 'RotArr', 'ScaleArr', 'ColorArr', 'CastShadow', 'RecvShadow'], out:['Obj'] },
+        params: {
+            Count:{v:100, min:10, max:5000, step:10},
+            CastShadow:{v:0, min:0, max:1, step:1, label:'Cast Shadow'},
+            RecvShadow:{v:1, min:0, max:1, step:1, label:'Recv Shadow'}
+        },
         init: (n) => {
             // Placeholder
             const g = new THREE.BoxGeometry(0.1,0.1,0.1);
             const m = new THREE.MeshStandardMaterial({color:0xffffff});
             const im = new THREE.InstancedMesh(g, m, 100);
             im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+            im.receiveShadow = true;
             scene.add(im);
             objects[n.id] = im;
             n.val.Obj = im;
@@ -205,6 +254,12 @@ export const ObjNodes = {
             const inMat = getIn(n, 'Mat');
             if(inMat && inMat.isMaterial && im.material !== inMat) im.material = inMat;
 
+            // Shadows
+            const cast = (getIn(n, 'CastShadow') || n.params.CastShadow.v) > 0.5;
+            const recv = (getIn(n, 'RecvShadow') || n.params.RecvShadow.v) > 0.5;
+            if(im.castShadow !== cast) im.castShadow = cast;
+            if(im.receiveShadow !== recv) im.receiveShadow = recv;
+
             // 2. Resize Count
             const count = Math.floor(n.params.Count.v);
             if(im.count !== count) {
@@ -212,6 +267,7 @@ export const ObjNodes = {
                 im.dispose();
                 const newIm = new THREE.InstancedMesh(im.geometry, im.material, count);
                 newIm.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                newIm.castShadow = cast; newIm.receiveShadow = recv;
                 scene.add(newIm);
                 objects[n.id] = newIm;
                 im = newIm;

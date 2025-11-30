@@ -50,3 +50,63 @@ export const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 export const mapRange = (v, inMin, inMax, outMin, outMax) => {
     return outMin + (outMax - outMin) * (v - inMin) / (inMax - inMin);
 };
+
+// Topological Sort for Nodes
+export function sortNodes(nodes, cables) {
+    // Kahn's Algorithm
+    const sorted = [];
+    const inDegree = new Map();
+    const adj = new Map();
+
+    // Init graph
+    nodes.forEach(n => {
+        inDegree.set(n.id, 0);
+        adj.set(n.id, []);
+    });
+
+    // Build edges
+    cables.forEach(c => {
+        // c.from -> c.to
+        if (adj.has(c.from) && inDegree.has(c.to)) {
+            adj.get(c.from).push(c.to);
+            inDegree.set(c.to, inDegree.get(c.to) + 1);
+        }
+    });
+
+    // Find 0 in-degree nodes
+    const queue = [];
+    inDegree.forEach((deg, id) => {
+        if (deg === 0) queue.push(id);
+    });
+
+    // Sort
+    // While queue not empty
+    while (queue.length > 0) {
+        // 1. Sort queue by ID or position to be deterministic?
+        // For now just shift.
+        const uId = queue.shift();
+        const uNode = nodes.find(n => n.id === uId);
+        if (uNode) sorted.push(uNode);
+
+        const neighbors = adj.get(uId);
+        if (neighbors) {
+            neighbors.forEach(vId => {
+                const d = inDegree.get(vId) - 1;
+                inDegree.set(vId, d);
+                if (d === 0) queue.push(vId);
+            });
+        }
+    }
+
+    // Check for cycles or disconnected parts
+    // If sorted.length != nodes.length, we have cycles or skipped nodes.
+    // In case of cycles, we should append the remaining nodes (naive fallback)
+    if (sorted.length !== nodes.length) {
+        // Append missing nodes (so they still run, even if laggy)
+        nodes.forEach(n => {
+            if (!sorted.includes(n)) sorted.push(n);
+        });
+    }
+
+    return sorted;
+}

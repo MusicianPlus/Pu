@@ -6,6 +6,8 @@ import { ObjNodes } from './obj/index.js';
 import { TexNodes } from './tex/index.js';
 import { SndNodes } from './snd/index.js';
 import { FxNodes } from './fx/index.js';
+import { CustomNodes } from './mat/custom.js';
+import { SysNodes } from './sys/index.js';
 
 // Combine all nodes
 export const NODES = {
@@ -16,7 +18,9 @@ export const NODES = {
     ...ObjNodes,
     ...TexNodes,
     ...SndNodes,
-    ...FxNodes
+    ...FxNodes,
+    ...CustomNodes,
+    ...SysNodes
 };
 
 export function getIcon(type) {
@@ -45,6 +49,7 @@ export function getIcon(type) {
     // MAT
     if (type.includes('wire')) return 'fa-border-none';
     if (type.includes('mat')) return 'fa-fill-drip';
+    if (type.includes('shader')) return 'fa-code';
 
     // OBJ
     if (type.includes('cam')) return 'fa-video';
@@ -65,6 +70,9 @@ export function getIcon(type) {
     if (type.includes('kaleido')) return 'fa-snowflake';
     if (type.includes('bloom')) return 'fa-sun';
     if (type.includes('fx')) return 'fa-wand-magic-sparkles';
+
+    // SYS
+    if (type.includes('group')) return 'fa-object-group';
 
     return 'fa-circle-nodes'; // Default generic node icon
 }
