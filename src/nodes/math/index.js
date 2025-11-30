@@ -79,5 +79,63 @@ export const MathNodes = {
             n.val.Out = res;
             updateViz(n, res);
         }
+    },
+    'math_logic': {
+        cat: 'math', name: { tr:'Mantık Kapısı', en:'Logic Gate' },
+        desc: { tr:'AND/OR/NOT mantık işlemleri.', en:'Boolean operations.' },
+        ports: { in:['A', 'B'], out:['Out'] },
+        params: { Op:{v:0, min:0, max:3, step:1, label:'Op (AND,OR,XOR,NOT)'} },
+        logic: (n) => {
+            const a = getIn(n, 'A') > 0.5;
+            const b = getIn(n, 'B') > 0.5;
+            const op = n.params.Op.v;
+            let res = false;
+
+            if(op===0) res = a && b; // AND
+            else if(op===1) res = a || b; // OR
+            else if(op===2) res = a !== b; // XOR
+            else if(op===3) res = !a; // NOT (Uses A only)
+
+            n.val.Out = res ? 1 : 0;
+            updateViz(n, n.val.Out);
+        }
+    },
+    'math_counter': {
+        cat: 'math', name: { tr:'Sayaç', en:'Counter' },
+        desc: { tr:'Tetiklendikçe artar.', en:'Increments on trigger.' },
+        ports: { in:['Trig', 'Reset'], out:['Count'] },
+        params: { Step:{v:1}, Limit:{v:100} },
+        init: (n) => { n.val.Count = 0; n.data.lastTrig = 0; },
+        logic: (n) => {
+            const trig = getIn(n, 'Trig');
+            const reset = getIn(n, 'Reset');
+
+            if(reset > 0.5) n.val.Count = 0;
+
+            if(trig > 0.5 && n.data.lastTrig <= 0.5) {
+                n.val.Count += n.params.Step.v;
+                if(n.val.Count > n.params.Limit.v) n.val.Count = 0; // Wrap? Or clamp? Let's wrap.
+            }
+            n.data.lastTrig = trig;
+            updateViz(n, n.val.Count);
+        }
+    },
+    'math_timer': {
+        cat: 'math', name: { tr:'Zamanlayıcı', en:'Timer' },
+        desc: { tr:'Süre ölçer.', en:'Measures time.' },
+        ports: { in:['Run', 'Reset'], out:['Time'] },
+        params: { Speed:{v:1} },
+        init: (n) => { n.val.Time = 0; n.data.lastTime = 0; },
+        logic: (n, ctx) => {
+            const dt = ctx.time - n.data.lastTime;
+            n.data.lastTime = ctx.time;
+
+            if(getIn(n,'Reset') > 0.5) n.val.Time = 0;
+
+            if(getIn(n,'Run') > 0.5) {
+                n.val.Time += dt * n.params.Speed.v;
+            }
+            updateViz(n, n.val.Time);
+        }
     }
 };

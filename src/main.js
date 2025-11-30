@@ -2,10 +2,15 @@ import './style.css';
 import { initEngine, resizeEngine, render, scene, camera, passes, composer, renderer, controls } from './core/engine.js';
 import { initSidebar, loadTemplate } from './ui/sidebar.js';
 import { initSettings } from './ui/settings.js';
-import { updateView, drawCables, drawBezier, startDrag, startWire, drag, wire } from './ui/canvas.js';
+import { updateView, drawCables, drawBezier, startDrag, startWire, drag, wire, addNode } from './ui/canvas.js';
 import { selectNode } from './ui/inspector.js';
 import { graph, ctx, view, initAudio } from './core/state.js';
+import { sortNodes } from './core/utils.js';
 import { NODES } from './nodes/registry.js';
+import { undo, redo, execute, ACT } from './core/history.js';
+import { initQuickMenu } from './ui/quickmenu.js';
+import { initMinimap } from './ui/minimap.js';
+import { initRecorder } from './core/recorder.js';
 
 // Global interaction state
 const pan = { on:false };
@@ -17,8 +22,11 @@ window.onload = () => {
     initEngine(document.getElementById('preview-content'));
     initSidebar();
     initSettings();
+    initQuickMenu();
+    initMinimap();
+    initRecorder();
 
-    // Camera Toggle UI
+    // Camera Toggle UI - CORRECT PARENT
     const camBtn = document.createElement('button');
     camBtn.innerHTML = '<i class="fas fa-video"></i>';
     camBtn.className = "text-dim hover:text-white px-2";
@@ -33,18 +41,34 @@ window.onload = () => {
             controls.enabled = false;
         }
     };
-    document.getElementById('preview-header').insertBefore(camBtn, document.getElementById('lbl-render'));
-
-    // ... (Load Template) ...
     
+    // Find container: #preview-header > .flex
+    const header = document.getElementById('preview-header');
+    const container = header.querySelector('.flex');
+    if(container) {
+        container.appendChild(camBtn);
+    } else {
+        header.appendChild(camBtn);
+    }
+
+    // Sort flag to avoid sorting every frame if graph hasn't changed
+    // We can assume graph changes when cables are modified
+    let sortedNodes = [];
+    let lastCableCount = -1;
+    let lastNodeCount = -1;
+
     const loop = () => {
-        // Debugging line
-        // console.log("Three.js objects:", scene, camera, renderer, composer);
-        
         ctx.time = performance.now() / 1000;
         
-        // Update Graph Logic
-        graph.nodes.forEach(n => {
+        // Check for graph changes to re-sort execution order
+        if(graph.cables.length !== lastCableCount || graph.nodes.length !== lastNodeCount) {
+             sortedNodes = sortNodes(graph.nodes, graph.cables);
+             lastCableCount = graph.cables.length;
+             lastNodeCount = graph.nodes.length;
+        }
+
+        // Update Graph Logic (in Topological Order)
+        sortedNodes.forEach(n => {
             if(NODES[n.type] && NODES[n.type].logic) {
                 // Only run camera logic if in Node Mode
                 if(n.type === 'obj_cam' && cameraMode === 'free') return;
@@ -62,7 +86,23 @@ window.onload = () => {
     // ... (Global Listeners) ...
     
     setupInteractions();
+    setupHotkeys();
 };
+
+function setupHotkeys() {
+    window.addEventListener('keydown', (e) => {
+        // Undo/Redo
+        if((e.metaKey || e.ctrlKey) && e.key === 'z') {
+            e.preventDefault();
+            if(e.shiftKey) redo();
+            else undo();
+        }
+        else if((e.metaKey || e.ctrlKey) && e.key === 'y') {
+            e.preventDefault();
+            redo();
+        }
+    });
+}
 
 function setupInteractions() {
     const ws = document.getElementById('workspace');
@@ -168,8 +208,16 @@ function setupInteractions() {
                 const tport = t.dataset.p;
                 if(tid !== wire.src) {
                     const exists = graph.cables.find(c => c.to === tid && c.toPort === tport);
+
+                    // Logic to add cable
+                    // Was: graph.cables.push(...)
+                    // Now: execute(...)
                     if(!exists) {
-                         graph.cables.push({ from:wire.src, fromPort:wire.port, to:tid, toPort:tport });
+                         execute({
+                             type: ACT.CONN,
+                             mode: 'do',
+                             cable: { from:wire.src, fromPort:wire.port, to:tid, toPort:tport }
+                         });
                     }
                 }
             } 
@@ -180,4 +228,3 @@ function setupInteractions() {
         }
     };
 }
-

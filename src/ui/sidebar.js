@@ -2,6 +2,7 @@ import { NODES, getIcon } from '../nodes/registry.js';
 import { t, sysT } from '../core/utils.js';
 import { addNode, resetScene, drawCables } from './canvas.js';
 import { graph } from '../core/state.js';
+import { undo, redo } from '../core/history.js';
 
 export function initSidebar() {
     // Texts & Buttons
@@ -13,6 +14,28 @@ export function initSidebar() {
     document.getElementById('btn-save').innerText = sysT('save');
     document.getElementById('btn-load').innerText = sysT('load');
     document.getElementById('btn-reset').innerText = sysT('reset');
+
+    // INSERT UNDO/REDO BUTTONS
+    const header = document.querySelector('.sidebar .p-5');
+    const undoContainer = document.createElement('div');
+    undoContainer.className = "flex items-center gap-1 absolute left-14 top-6"; // Absolute position near title
+
+    const btnUndo = document.createElement('button');
+    btnUndo.innerHTML = '<i class="fas fa-undo"></i>';
+    btnUndo.className = "text-dim hover:text-white px-2 text-xs";
+    btnUndo.title = "Undo (Ctrl+Z)";
+    btnUndo.onclick = undo;
+
+    const btnRedo = document.createElement('button');
+    btnRedo.innerHTML = '<i class="fas fa-redo"></i>';
+    btnRedo.className = "text-dim hover:text-white px-2 text-xs";
+    btnRedo.title = "Redo (Ctrl+Y)";
+    btnRedo.onclick = redo;
+
+    undoContainer.appendChild(btnUndo);
+    undoContainer.appendChild(btnRedo);
+    header.appendChild(undoContainer);
+
 
     // Tabs
     const tabNodes = document.getElementById('btn-tab-nodes');
@@ -41,7 +64,8 @@ export function initSidebar() {
         mat: { label: 'LOOK (Materials)', items: [] },
         tex: { label: 'IMAGE (Textures)', items: [] },
         snd: { label: 'AUDIO (Sound)', items: [] },
-        fx: { label: 'EFFECTS (Post)', items: [] }
+        fx: { label: 'EFFECTS (Post)', items: [] },
+        sys: { label: 'SYSTEM', items: [] }
     };
 
     Object.entries(NODES).forEach(([type, def]) => {
