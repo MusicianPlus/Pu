@@ -3,15 +3,7 @@ export function initRecorder() {
     btn.innerHTML = '<i class="fas fa-circle"></i>'; // Record icon
     btn.className = "text-dim hover:text-red-500 px-2";
     btn.title = "Start/Stop Recording (WebM)";
-
-    // Find the container: #preview-header > .flex
-    const header = document.getElementById('preview-header');
-    const container = header.querySelector('.flex');
-    if(container) {
-        container.appendChild(btn);
-    } else {
-        header.appendChild(btn);
-    }
+    document.getElementById('preview-header').insertBefore(btn, document.getElementById('lbl-render'));
 
     let recorder = null;
     let chunks = [];

@@ -203,6 +203,10 @@ export function drawCables() {
             const cat = NODES[src.type].cat;
             path.style.stroke = `var(--c-${cat})`;
             path.style.animation = "dash 1s linear infinite";
+
+            // Flow Animation Logic
+            // We use stroke-dasharray and stroke-dashoffset in CSS usually, but here we can set dynamic class or style
+            path.style.animation = "dash 1s linear infinite"; // Needs CSS keyframes
         }
         const d = Math.abs(p1.x-p2.x)*0.5;
         path.setAttribute('d', `M ${p1.x} ${p1.y} C ${p1.x+d} ${p1.y}, ${p2.x-d} ${p2.y}, ${p2.x} ${p2.y}`);
@@ -281,6 +285,7 @@ export function resetScene() {
 
     // Reset FX... (same as before)
     if(passes) {
+        // Reset all known passes
         const defaults = {
             bloom: { strength: 0, radius: 0 },
             after: { uniforms: { damp: { value: 0 } } },
@@ -290,6 +295,7 @@ export function resetScene() {
             pixel: { uniforms: { pixelSize: { value: 1 } } },
             kaleido: { enabled: false }
         };
+
         Object.keys(defaults).forEach(key => {
             if(passes[key]) {
                 const def = defaults[key];

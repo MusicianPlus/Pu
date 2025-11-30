@@ -36,17 +36,10 @@ window.onload = () => {
         camBtn.style.color = cameraMode === 'node' ? '#ef4444' : '#999';
         controls.enabled = (cameraMode === 'free');
     };
+    document.getElementById('preview-header').insertBefore(camBtn, document.getElementById('lbl-render'));
     
-    // Find container: #preview-header > .flex
-    const header = document.getElementById('preview-header');
-    const container = header.querySelector('.flex');
-    if(container) {
-        container.appendChild(camBtn);
-    } else {
-        header.appendChild(camBtn);
-    }
-
-    // Sort logic
+    // Sort flag to avoid sorting every frame if graph hasn't changed
+    // We can assume graph changes when cables are modified
     let sortedNodes = [];
     let lastCableCount = -1;
     let lastNodeCount = -1;
@@ -54,12 +47,14 @@ window.onload = () => {
     const loop = () => {
         ctx.time = performance.now() / 1000;
         
+        // Check for graph changes to re-sort execution order
         if(graph.cables.length !== lastCableCount || graph.nodes.length !== lastNodeCount) {
              sortedNodes = sortNodes(graph.nodes, graph.cables);
              lastCableCount = graph.cables.length;
              lastNodeCount = graph.nodes.length;
         }
 
+        // Update Graph Logic (in Topological Order)
         sortedNodes.forEach(n => {
             if(NODES[n.type] && NODES[n.type].logic) {
                 if(n.type === 'obj_cam' && cameraMode === 'free') return;
@@ -78,6 +73,7 @@ window.onload = () => {
 
 function setupHotkeys() {
     window.addEventListener('keydown', (e) => {
+        // Undo/Redo
         if((e.metaKey || e.ctrlKey) && e.key === 'z') {
             e.preventDefault();
             if(e.shiftKey) redo();
@@ -208,6 +204,10 @@ function setupInteractions() {
                 const tport = t.dataset.p;
                 if(tid !== wire.src) {
                     const exists = graph.cables.find(c => c.to === tid && c.toPort === tport);
+
+                    // Logic to add cable
+                    // Was: graph.cables.push(...)
+                    // Now: execute(...)
                     if(!exists) {
                          execute({
                              type: ACT.CONN,
