@@ -82,6 +82,10 @@ export function drawCables() {
             valText = isNaN(src.val[c.fromPort]) ? "0.0" : (typeof src.val[c.fromPort] === 'number' ? src.val[c.fromPort].toFixed(2) : 'OBJ');
             const cat = NODES[src.type].cat;
             path.style.stroke = `var(--c-${cat})`;
+
+            // Flow Animation Logic
+            // We use stroke-dasharray and stroke-dashoffset in CSS usually, but here we can set dynamic class or style
+            path.style.animation = "dash 1s linear infinite"; // Needs CSS keyframes
         }
         const d = Math.abs(p1.x-p2.x)*0.5;
         path.setAttribute('d', `M ${p1.x} ${p1.y} C ${p1.x+d} ${p1.y}, ${p2.x-d} ${p2.y}, ${p2.x} ${p2.y}`);
@@ -291,13 +295,30 @@ export function resetScene() {
 
     // 4. Reset FX Defaults
     if(passes) {
-        if(passes.bloom) { 
-            passes.bloom.strength = 0; 
-            passes.bloom.radius = 0; 
-        }
-        if(passes.after) { passes.after.uniforms['damp'].value = 0; }
-        if(passes.rgb) { passes.rgb.uniforms['amount'].value = 0; }
-        if(passes.kaleido) { passes.kaleido.enabled = false; }
+        // Reset all known passes
+        const defaults = {
+            bloom: { strength: 0, radius: 0 },
+            after: { uniforms: { damp: { value: 0 } } },
+            rgb: { uniforms: { amount: { value: 0 } } },
+            film: { uniforms: { nIntensity: { value: 0 }, sIntensity: { value: 0 }, grayscale: { value: 0 } } },
+            vignette: { uniforms: { darkness: { value: 0 }, offset: { value: 1 } } },
+            pixel: { uniforms: { pixelSize: { value: 1 } } },
+            kaleido: { enabled: false }
+        };
+
+        Object.keys(defaults).forEach(key => {
+            if(passes[key]) {
+                const def = defaults[key];
+                if(def.strength !== undefined) passes[key].strength = def.strength;
+                if(def.radius !== undefined) passes[key].radius = def.radius;
+                if(def.enabled !== undefined) passes[key].enabled = def.enabled;
+                if(def.uniforms) {
+                    Object.keys(def.uniforms).forEach(uk => {
+                        if(passes[key].uniforms[uk]) passes[key].uniforms[uk].value = def.uniforms[uk].value;
+                    });
+                }
+            }
+        });
     }
     
     // 5. Reset Camera & Controls
