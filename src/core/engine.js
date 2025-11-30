@@ -66,8 +66,12 @@ export function initEngine(container) {
     camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 100);
     camera.position.set(0, 2, 8);
 
-    renderer = new THREE.WebGLRenderer({ antialias: false });
+    // Shadow Map Support
+    renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true }); // preserveDrawingBuffer needed for screenshot/video
     renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
     container.appendChild(renderer.domElement);
@@ -81,6 +85,9 @@ export function initEngine(container) {
 
     const l = new THREE.DirectionalLight(0xffffff, 1);
     l.position.set(2, 5, 5);
+    l.castShadow = true; // Default
+    l.shadow.mapSize.width = 1024;
+    l.shadow.mapSize.height = 1024;
     scene.add(l);
     scene.add(new THREE.AmbientLight(0xffffff, 1.5));
 

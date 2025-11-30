@@ -2,11 +2,15 @@ import './style.css';
 import { initEngine, resizeEngine, render, scene, camera, passes, composer, renderer, controls } from './core/engine.js';
 import { initSidebar, loadTemplate } from './ui/sidebar.js';
 import { initSettings } from './ui/settings.js';
-import { updateView, drawCables, drawBezier, startDrag, startWire, drag, wire } from './ui/canvas.js';
+import { updateView, drawCables, drawBezier, startDrag, startWire, drag, wire, addNode } from './ui/canvas.js';
 import { selectNode } from './ui/inspector.js';
 import { graph, ctx, view, initAudio } from './core/state.js';
 import { sortNodes } from './core/utils.js';
 import { NODES } from './nodes/registry.js';
+import { undo, redo, execute, ACT } from './core/history.js';
+import { initQuickMenu } from './ui/quickmenu.js';
+import { initMinimap } from './ui/minimap.js';
+import { initRecorder } from './core/recorder.js';
 
 // Global interaction state
 const pan = { on:false };
@@ -18,6 +22,9 @@ window.onload = () => {
     initEngine(document.getElementById('preview-content'));
     initSidebar();
     initSettings();
+    initQuickMenu();
+    initMinimap();
+    initRecorder();
 
     // Camera Toggle UI
     const camBtn = document.createElement('button');
@@ -71,7 +78,23 @@ window.onload = () => {
     // ... (Global Listeners) ...
     
     setupInteractions();
+    setupHotkeys();
 };
+
+function setupHotkeys() {
+    window.addEventListener('keydown', (e) => {
+        // Undo/Redo
+        if((e.metaKey || e.ctrlKey) && e.key === 'z') {
+            e.preventDefault();
+            if(e.shiftKey) redo();
+            else undo();
+        }
+        else if((e.metaKey || e.ctrlKey) && e.key === 'y') {
+            e.preventDefault();
+            redo();
+        }
+    });
+}
 
 function setupInteractions() {
     const ws = document.getElementById('workspace');
@@ -177,8 +200,16 @@ function setupInteractions() {
                 const tport = t.dataset.p;
                 if(tid !== wire.src) {
                     const exists = graph.cables.find(c => c.to === tid && c.toPort === tport);
+
+                    // Logic to add cable
+                    // Was: graph.cables.push(...)
+                    // Now: execute(...)
                     if(!exists) {
-                         graph.cables.push({ from:wire.src, fromPort:wire.port, to:tid, toPort:tport });
+                         execute({
+                             type: ACT.CONN,
+                             mode: 'do',
+                             cable: { from:wire.src, fromPort:wire.port, to:tid, toPort:tport }
+                         });
                     }
                 }
             } 
