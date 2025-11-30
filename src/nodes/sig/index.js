@@ -12,6 +12,20 @@ function mulberry32(a) {
     }
 }
 
+// 1D Perlin Noise Helper (Simplex-ish)
+// Source: https://github.com/josephg/noisejs (Simplified)
+// For 1D, we can just use a simple value noise interpolation
+function noise1D(x) {
+    const i = Math.floor(x);
+    const f = x - i;
+    const w = f * f * (3.0 - 2.0 * f); // Cubic easing
+    // Pseudo-random hash
+    const h = n => Math.sin(n * 12.9898) * 43758.5453;
+    const r1 = h(i) - Math.floor(h(i));
+    const r2 = h(i + 1.0) - Math.floor(h(i + 1.0));
+    return r1 + (r2 - r1) * w;
+}
+
 export const SigNodes = {
     'sig_mouse': {
         cat: 'sig', name: { tr:'Fare Konumu', en:'Mouse Pos' },
@@ -44,6 +58,18 @@ export const SigNodes = {
             updateViz(n, (n.val.Val/amp + 1)/2);
         }
     },
+    'sig_noise': {
+        cat: 'sig', name: { tr:'Gürültü (Perlin)', en:'Noise (1D)' },
+        desc: { tr:'Rastgele ama akışkan değer.', en:'Smooth random value (1D Perlin).' },
+        ports: { in:['Speed', 'Scale'], out:['Val'] },
+        params: { Speed:{v:1}, Scale:{v:1} },
+        logic: (n, ctx) => {
+            const speed = getIn(n, 'Speed') || n.params.Speed.v;
+            const scale = getIn(n, 'Scale') || n.params.Scale.v;
+            n.val.Val = noise1D(ctx.time * speed) * scale;
+            updateViz(n, (n.val.Val/scale + 1)/2); // Approx viz
+        }
+    },
     'sig_trigger': {
         cat: 'sig', name: { tr:'Tetikleyici', en:'Trigger' },
         desc: { tr:'Manuel tetikleyici buton.', en:'Manual trigger button.' },
@@ -58,10 +84,11 @@ export const SigNodes = {
     'sig_beat': {
         cat: 'sig', name: { tr:'BPM Vuruş', en:'BPM Beat' },
         desc: { tr:'BPM bazlı tetikleyici.', en:'BPM based trigger generator.' },
-        ports: { out: ['Pulse', 'Ramp'] },
+        ports: { in:['BPM'], out: ['Pulse', 'Ramp'] },
         params: { BPM:{v:120, min:40, max:200, step:1} },
         logic: (n, ctx) => {
-            const bps = n.params.BPM.v / 60;
+            const bpm = getIn(n, 'BPM') || n.params.BPM.v;
+            const bps = bpm / 60;
             const beatTime = ctx.time * bps;
             const ramp = beatTime % 1; 
             const pulse = ramp < 0.1 ? 1 : 0; 

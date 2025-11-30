@@ -153,5 +153,53 @@ export const GeoNodes = {
                 n.data.lastW = w; n.data.lastH = h; n.data.lastS = s;
             }
         }
+    },
+    'geo_circle': {
+        cat: 'geo', name: { tr:'Daire', en:'Circle' },
+        desc: { tr:'2D Daire geometrisi.', en:'2D Circle geometry.' },
+        ports: { in:['Radius', 'Segments'], out:['Geo'] },
+        params: { Radius:{v:1, min:0.1, max:5}, Segments:{v:32, min:3, max:64, step:1} },
+        init: (n) => { n.val.Geo = new THREE.CircleGeometry(1, 32); },
+        logic: (n) => {
+            const r = getIn(n, 'Radius');
+            const s = Math.floor(getIn(n, 'Segments'));
+            if(n.data.lastR !== r || n.data.lastS !== s) {
+                 updateGeoOutput(n, new THREE.CircleGeometry(r, s));
+                 n.data.lastR = r; n.data.lastS = s;
+            }
+        }
+    },
+    'geo_cylinder': {
+        cat: 'geo', name: { tr:'Silindir', en:'Cylinder' },
+        desc: { tr:'Silindir geometrisi.', en:'Cylinder geometry.' },
+        ports: { in:['RadiusTop', 'RadiusBottom', 'Height', 'Segments'], out:['Geo'] },
+        params: { RadiusTop:{v:1}, RadiusBottom:{v:1}, Height:{v:2}, Segments:{v:32, min:3, max:64} },
+        init: (n) => { n.val.Geo = new THREE.CylinderGeometry(1, 1, 2, 32); },
+        logic: (n) => {
+            const rt = getIn(n, 'RadiusTop') || n.params.RadiusTop.v;
+            const rb = getIn(n, 'RadiusBottom') || n.params.RadiusBottom.v;
+            const h = getIn(n, 'Height') || n.params.Height.v;
+            const s = Math.floor(getIn(n, 'Segments') || n.params.Segments.v);
+
+            if(n.data.lastRT !== rt || n.data.lastRB !== rb || n.data.lastH !== h || n.data.lastS !== s) {
+                updateGeoOutput(n, new THREE.CylinderGeometry(rt, rb, h, s));
+                n.data.lastRT = rt; n.data.lastRB = rb; n.data.lastH = h; n.data.lastS = s;
+            }
+        }
+    },
+    'geo_icosahedron': {
+        cat: 'geo', name: { tr:'Yirmiyüzlü', en:'Icosahedron' },
+        desc: { tr:'Çok yüzlü geometri.', en:'Icosahedron geometry.' },
+        ports: { in:['Radius', 'Detail'], out:['Geo'] },
+        params: { Radius:{v:1}, Detail:{v:0, min:0, max:5, step:1} },
+        init: (n) => { n.val.Geo = new THREE.IcosahedronGeometry(1, 0); },
+        logic: (n) => {
+            const r = getIn(n, 'Radius');
+            const d = Math.floor(getIn(n, 'Detail') || n.params.Detail.v);
+            if(n.data.lastR !== r || n.data.lastD !== d) {
+                updateGeoOutput(n, new THREE.IcosahedronGeometry(r, d));
+                n.data.lastR = r; n.data.lastD = d;
+            }
+        }
     }
 };
