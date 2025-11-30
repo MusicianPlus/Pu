@@ -5,6 +5,7 @@ import { initSettings } from './ui/settings.js';
 import { updateView, drawCables, drawBezier, startDrag, startWire, drag, wire } from './ui/canvas.js';
 import { selectNode } from './ui/inspector.js';
 import { graph, ctx, view, initAudio } from './core/state.js';
+import { sortNodes } from './core/utils.js';
 import { NODES } from './nodes/registry.js';
 
 // Global interaction state
@@ -34,17 +35,25 @@ window.onload = () => {
         }
     };
     document.getElementById('preview-header').insertBefore(camBtn, document.getElementById('lbl-render'));
-
-    // ... (Load Template) ...
     
+    // Sort flag to avoid sorting every frame if graph hasn't changed
+    // We can assume graph changes when cables are modified
+    let sortedNodes = [];
+    let lastCableCount = -1;
+    let lastNodeCount = -1;
+
     const loop = () => {
-        // Debugging line
-        // console.log("Three.js objects:", scene, camera, renderer, composer);
-        
         ctx.time = performance.now() / 1000;
         
-        // Update Graph Logic
-        graph.nodes.forEach(n => {
+        // Check for graph changes to re-sort execution order
+        if(graph.cables.length !== lastCableCount || graph.nodes.length !== lastNodeCount) {
+             sortedNodes = sortNodes(graph.nodes, graph.cables);
+             lastCableCount = graph.cables.length;
+             lastNodeCount = graph.nodes.length;
+        }
+
+        // Update Graph Logic (in Topological Order)
+        sortedNodes.forEach(n => {
             if(NODES[n.type] && NODES[n.type].logic) {
                 // Only run camera logic if in Node Mode
                 if(n.type === 'obj_cam' && cameraMode === 'free') return;
@@ -180,4 +189,3 @@ function setupInteractions() {
         }
     };
 }
-
