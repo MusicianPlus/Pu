@@ -1,0 +1,234 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    /* Base Theme Variables (Default Dark Pro) */
+    --bg-app: #050505;
+    --bg-panel: #111111;
+    --bg-node: rgba(18, 18, 18, 0.95);
+    --bg-input: #000000;
+    --border: #333333;
+    --text-main: #eeeeee;
+    --text-dim: #999999;
+    
+    /* Grid */
+    --grid-line: rgba(255,255,255,0.04);
+
+    /* Categories */
+    --c-sig: #eab308;
+    --c-math: #22c55e;
+    --c-geo: #3b82f6;
+    --c-mat: #f97316;
+    --c-obj: #ef4444;
+    --c-tex: #9ca3af;
+    --c-snd: #ec4899;
+    --c-fx: #d946ef;
+}
+
+body { 
+    font-family: 'Plus Jakarta Sans', sans-serif; 
+    background-color: var(--bg-app); 
+    color: var(--text-main); 
+    overflow: hidden; 
+    user-select: none; 
+    height: 100vh; 
+    display: flex; 
+}
+
+/* Workspace Background (Infinite Grid) */
+#workspace { 
+    flex: 1; position: relative; background-color: var(--bg-app); overflow: hidden; 
+    cursor: default; 
+}
+#grid-layer {
+    position: absolute; top: -5000px; left: -5000px; width: 10000px; height: 10000px;
+    background-image: 
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 20px 20px; /* Base size, will be overridden by JS */
+    pointer-events: none; /* Let clicks pass through to workspace */
+    opacity: 0.1; /* Subtle grid */
+}
+
+/* Only the graph world (empty space) gets grab cursor via JS or specific class, 
+   but for now let's keep it simple: Hold Space or Middle Mouse to pan usually?
+   Or just make the background grab-able but not nodes.
+*/
+#graph-world { 
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+    transform-origin: 0 0; 
+    /* We will handle cursor via JS events on main container to avoid sticking */
+}
+
+/* When panning state is active (class added to body) */
+body.panning { cursor: grabbing !important; }
+body.dragging { cursor: move !important; }
+body.resizing { cursor: ew-resize !important; }
+
+/* SVG Cables */
+svg { pointer-events: none; position: absolute; top:0; left:0; width:100%; height:100%; z-index: 0; overflow: visible; }
+path.cable { fill: none; stroke: #666; stroke-width: 2; stroke-linecap: round; opacity: 0.8; cursor: pointer; pointer-events: stroke; transition: stroke 0.2s; }
+path.cable:hover { stroke: #fff !important; stroke-width: 4; opacity: 1; z-index: 100; }
+.cable-label-bg { fill: var(--bg-app); rx: 4; stroke: var(--border); stroke-width: 1; }
+.cable-label-text { fill: var(--text-main); font-family: 'JetBrains Mono'; font-size: 9px; text-anchor: middle; dominant-baseline: middle; }
+
+/* Nodes */
+.node { 
+    position: absolute; width: 170px; 
+    background: var(--bg-node); 
+    border: 1px solid var(--border); 
+    border-radius: 8px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+    display: flex; flex-direction: column; z-index: 10; 
+    backdrop-filter: blur(8px); 
+}
+.node.selected { border-color: var(--text-main); box-shadow: 0 0 0 1px var(--text-main); z-index: 50; }
+.node-header { 
+    padding: 6px 10px; font-weight: 800; font-size: 11px; 
+    display: flex; justify-content: space-between; align-items: center; 
+    border-bottom: 1px solid rgba(0,0,0,0.2); 
+    color: #000; text-transform: uppercase; letter-spacing: 0.5px; cursor: grab; 
+    border-radius: 7px 7px 0 0; 
+}
+
+/* Global Node Styling */
+.node.global-node {
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1), 0 0 0 1px var(--text-dim);
+    border-color: transparent; /* Glow handles the border */
+}
+.node.global-node .node-header {
+    background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent);
+}
+.global-tag {
+    font-size: 8px;
+    background: #fff;
+    color: #000;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+}
+
+/* Category Headers */
+.node.sig .node-header { background: var(--c-sig); }
+.node.math .node-header { background: var(--c-math); }
+.node.geo .node-header { background: var(--c-geo); color: #fff; }
+.node.mat .node-header { background: var(--c-mat); color: #fff; }
+.node.obj .node-header { background: var(--c-obj); color: #fff; }
+.node.tex .node-header { background: var(--c-tex); color: #000; }
+.node.snd .node-header { background: var(--c-snd); color: #fff; }
+.node.fx .node-header { background: var(--c-fx); color: #fff; }
+
+.node-body { 
+    padding: 6px 0; display: flex; flex-direction: column; gap: 4px; position: relative;
+}
+.node-body::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px;
+    background: var(--border); opacity: 0.3; pointer-events: none;
+}
+
+.port-row { display: flex; align-items: center; justify-content: space-between; height: 22px; padding: 0 8px; font-family: 'JetBrains Mono'; font-size: 10px; color: var(--text-dim); }
+.port-row:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
+
+.socket { width: 10px; height: 10px; border-radius: 50%; background: #444; border: 1px solid #222; cursor: crosshair; transition: 0.1s; z-index: 20; }
+.socket:hover { transform: scale(1.4); background: #fff; border-color: #ef4444; }
+.socket.connected { background: #fff; }
+.socket.in { margin-right: 8px; }
+.socket.out { margin-left: 8px; }
+
+/* Visualization */
+.viz-strip { height: 3px; background: #222; width: 100%; overflow: hidden; margin-bottom: 2px; }
+.viz-bar { height: 100%; width: 0%; background: currentColor; transition: width 0.05s linear; }
+.node.sig .viz-bar { color: var(--c-sig); }
+.node.math .viz-bar { color: var(--c-math); }
+
+.viz-box {
+    width: 100%; height: 40px;
+    background: var(--bg-input);
+    margin-bottom: 4px;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+}
+.viz-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+.viz-canvas { width: 100%; height: 100%; }
+
+/* Sidebar */
+.sidebar { width: 280px; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; }
+
+.lib-cat-header {
+    font-size: 10px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; 
+    padding: 12px 8px 4px 8px; 
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none;
+}
+.lib-cat-header:hover { color: var(--text-main); }
+.lib-cat-header i { transition: transform 0.2s; }
+.lib-cat-header.collapsed i { transform: rotate(-90deg); }
+
+.lib-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; padding: 0 4px 8px 4px;
+}
+.lib-grid.hidden { display: none; }
+
+.lib-item { 
+    padding: 10px; font-size: 10px; color: var(--text-dim); cursor: pointer; 
+    background: var(--bg-app); /* Slightly darker than panel */
+    border: 1px solid var(--border); border-radius: 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; 
+    transition: all 0.1s; text-align: center;
+}
+.lib-item:hover { background: var(--bg-panel); border-color: var(--text-main); color: var(--text-main); transform: translateY(-1px); }
+.lib-item i { font-size: 16px; margin-bottom: 2px; }
+
+.lib-item.sig i { color: var(--c-sig); }
+.lib-item.math i { color: var(--c-math); }
+.lib-item.geo i { color: var(--c-geo); }
+.lib-item.mat i { color: var(--c-mat); }
+.lib-item.obj i { color: var(--c-obj); }
+.lib-item.tex i { color: var(--c-tex); }
+.lib-item.snd i { color: var(--c-snd); }
+.lib-item.fx i { color: var(--c-fx); }
+
+/* Inspector */
+.inspector { width: 280px; background: var(--bg-panel); border-left: 1px solid var(--border); position: absolute; right: 0; top: 0; height: 100%; z-index: 90; display: flex; flex-direction: column; }
+.node-desc { padding: 16px; background: var(--bg-app); border-bottom: 1px solid var(--border); font-size: 11px; line-height: 1.6; color: var(--text-dim); }
+.node-desc strong { color: var(--text-main); display: block; margin-bottom: 4px; font-size: 12px; }
+.prop-row { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.prop-label { display: block; font-size: 10px; color: var(--text-dim); margin-bottom: 6px; font-weight: 700; text-transform: uppercase; }
+
+.prop-input:focus { border-color: var(--c-sig); outline: none; }
+
+/* Draggable Number Box */
+.prop-val-box {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    font-family: 'JetBrains Mono'; font-size: 11px; padding: 6px; border-radius: 4px;
+    cursor: ew-resize; user-select: none; text-align: right; transition: border-color 0.1s;
+}
+.prop-val-box:hover { border-color: var(--text-dim); color: #fff; }
+.prop-val-box:active { border-color: var(--c-sig); color: var(--c-sig); }
+
+.prop-input-edit {
+    width: 100%; background: transparent; border: none; color: inherit;
+    font-family: inherit; font-size: inherit; text-align: right; outline: none;
+}
+
+.prop-range { width: 100%; height: 4px; background: var(--border); border-radius: 2px; accent-color: var(--text-main); }
+.prop-file { width: 100%; background: var(--bg-input); border: 1px dashed var(--border); color: var(--text-dim); font-size: 10px; padding: 8px; border-radius: 4px; cursor: pointer; text-align: center; }
+.prop-file:hover { border-color: var(--text-main); color: var(--text-main); }
+
+/* Preview Window */
+#preview-window { position: absolute; top: 20px; right: 300px; width: 480px; height: 320px; background: #000; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; box-shadow: 0 30px 100px rgba(0,0,0,0.9); z-index: 80; display: flex; flex-direction: column; }
+#preview-header { padding: 6px 12px; background: var(--bg-panel); border-bottom: 1px solid var(--border); cursor: move; display: flex; justify-content: space-between; align-items: center; }
+.tab-btn { flex:1; padding:12px; text-align:center; font-size:11px; font-weight:700; color:var(--text-dim); cursor:pointer; border-bottom:2px solid transparent; transition: all 0.2s; }
+.tab-btn.active { color:var(--text-main); border-bottom-color:var(--text-main); background: linear-gradient(to top, rgba(255,255,255,0.05), transparent); }
+
+/* Custom Scrollbar */
+.custom-scroll::-webkit-scrollbar { width: 4px; }
+.custom-scroll::-webkit-scrollbar-track { background: var(--bg-panel); }
+.custom-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }

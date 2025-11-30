@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pu | Visual Programming</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- LEFT: LIBRARY -->
+    <div class="sidebar">
+        <div class="p-5 border-b border-border flex justify-between items-center relative">
+            <h1 class="text-2xl font-black tracking-tighter text-txt">Pu<span class="text-sig">.</span></h1>
+            
+            <div class="flex items-center gap-3">
+                <!-- Audio Status Dot Only -->
+                <div id="audio-status" class="w-2 h-2 rounded-full bg-red-500" title="Audio Engine Status"></div>
+                <button id="btn-settings" class="text-dim hover:text-txt transition-colors"><i class="fas fa-cog"></i></button>
+            </div>
+        </div>
+
+        <div class="flex border-b border-border">
+            <button id="btn-tab-nodes" class="tab-btn active">NODES</button>
+            <button id="btn-tab-templates" class="tab-btn">TEMPLATES</button>
+        </div>
+
+        <!-- NODE LIBRARY -->
+        <div id="lib-nodes" class="flex-1 flex flex-col overflow-hidden">
+            <!-- Search -->
+            <div class="p-2 border-b border-border">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-2.5 text-dim text-xs"></i>
+                    <input type="text" id="node-search" placeholder="Search nodes..." class="w-full bg-input border border-border rounded pl-8 pr-2 py-1.5 text-xs text-txt focus:border-sig outline-none placeholder-gray-600">
+                </div>
+            </div>
+            
+            <!-- List/Grid -->
+            <div id="node-list-container" class="flex-1 overflow-y-auto custom-scroll p-2">
+                <!-- Categories will be injected here by JS -->
+            </div>
+        </div>
+
+        <!-- TEMPLATES -->
+        <div id="lib-templates" class="hidden flex-1 overflow-y-auto p-3">
+            <div id="template-list"></div>
+            <div class="flex gap-2 mt-4">
+                <button id="btn-save" class="flex-1 bg-input text-dim text-[10px] font-bold py-2 rounded border border-border hover:bg-border hover:text-txt">SAVE</button>
+                <button id="btn-load" class="flex-1 bg-input text-dim text-[10px] font-bold py-2 rounded border border-border hover:bg-border hover:text-txt">LOAD</button>
+            </div>
+            <button id="btn-reset" class="w-full mt-2 bg-red-900/20 text-red-500 text-[10px] font-bold py-3 rounded border border-red-900/50 hover:bg-red-900/40">RESET</button>
+        </div>
+    </div>
+
+    <!-- WORKSPACE -->
+    <div id="workspace">
+        <div id="grid-layer"></div>
+        <div id="graph-world">
+            <svg id="connections">
+                <path id="drag-cable" class="cable" d="" style="stroke-dasharray: 4; stroke: #fff; display:none;"></path>
+            </svg>
+            <div id="node-container"></div>
+        </div>
+    </div>
+
+    <!-- INSPECTOR -->
+    <div class="inspector" id="inspector">
+        <div class="p-4 border-b border-border bg-panel">
+            <h2 id="lbl-props" class="text-xs font-bold text-dim uppercase tracking-widest">PROPERTIES</h2>
+        </div>
+        <div id="inspector-content">
+            <div id="lbl-select-hint" class="p-10 text-center text-dim text-xs italic">...</div>
+        </div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div id="preview-window">
+        <div id="preview-header" class="bg-panel p-2 flex justify-between items-center border-b border-border cursor-move">
+            <div class="flex items-center gap-2">
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span id="lbl-render" class="text-[10px] font-bold text-dim">CANLI RENDER</span>
+            </div>
+            <span id="fps" class="text-[9px] text-dim font-mono">60 FPS</span>
+        </div>
+        <div id="preview-content" class="flex-1 bg-black relative"></div>
+        <div id="resize-handle" class="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-50 bg-gradient-to-tl from-gray-600 to-transparent"></div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="hidden fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center">
+        <div class="w-96 bg-panel border border-border rounded-lg shadow-2xl p-6 relative">
+            <h2 class="text-lg font-bold text-txt mb-6 border-b border-border pb-2">SETTINGS</h2>
+            <button id="btn-close-settings" class="absolute top-4 right-4 text-dim hover:text-txt"><i class="fas fa-times"></i></button>
+            
+            <div class="flex flex-col gap-4">
+                <!-- Language -->
+                <div>
+                    <label class="text-xs font-bold text-dim uppercase mb-2 block">Language / Dil</label>
+                    <select id="set-lang" class="w-full bg-input border border-border text-txt text-sm p-2 rounded">
+                        <option value="en">English</option>
+                        <option value="tr">Türkçe</option>
+                    </select>
+                </div>
+
+                <!-- Theme -->
+                <div>
+                    <label class="text-xs font-bold text-dim uppercase mb-2 block">Theme / Tema</label>
+                    <select id="set-theme" class="w-full bg-input border border-border text-txt text-sm p-2 rounded">
+                        <!-- JS will populate -->
+                    </select>
+                </div>
+
+                <!-- Resolution -->
+                <div>
+                    <label class="text-xs font-bold text-dim uppercase mb-2 block">Render Resolution</label>
+                    <select id="set-resolution" class="w-full bg-input border border-border text-txt text-sm p-2 rounded">
+                        <option value="0.5">Low (0.5x) - Fast</option>
+                        <option value="1" selected>Native (1.0x) - Sharp</option>
+                        <option value="1.5">High (1.5x) - Heavy</option>
+                    </select>
+                </div>
+
+                <!-- Grid Visibility -->
+                <div>
+                    <label class="text-xs font-bold text-dim uppercase mb-2 block">Grid Opacity</label>
+                    <input type="range" id="set-grid" min="0" max="0.5" step="0.05" value="0.1" class="w-full accent-sig h-1 bg-border rounded appearance-none">
+                </div>
+
+                <!-- Reset LocalStorage -->
+                <div class="pt-4 border-t border-border">
+                    <button id="btn-clear-data" class="w-full bg-red-900/20 text-red-500 text-xs font-bold py-2 rounded border border-red-900/50 hover:bg-red-900/40">
+                        FACTORY RESET (CLEAR DATA)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ENTRY POINT -->
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
